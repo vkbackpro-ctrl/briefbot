@@ -9,7 +9,7 @@ const anthropic = new Anthropic({
 
 export async function POST(request) {
   try {
-    const { projectId, password } = await request.json();
+    const { projectId, password, format = 'doc' } = await request.json();
 
     if (!projectId) {
       return NextResponse.json({ error: 'projectId requis' }, { status: 400 });
@@ -71,10 +71,7 @@ export async function POST(request) {
       amount: exportTokens,
     });
 
-    // Construire le .doc complet
-    const fullDoc = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-<head><meta charset='utf-8'>
-<style>
+    const styles = `
   body { font-family: Calibri, sans-serif; color: #1a1a1a; line-height: 1.7; padding: 50px; max-width: 800px; margin: 0 auto; }
   h1 { color: #1e3a5f; font-size: 28px; border-bottom: 3px solid #e8913a; padding-bottom: 10px; margin-top: 40px; }
   h2 { color: #2c5282; font-size: 22px; margin-top: 30px; }
@@ -87,13 +84,24 @@ export async function POST(request) {
   li { margin-bottom: 6px; }
   blockquote { border-left: 4px solid #e8913a; padding: 12px 16px; background: #fef7ed; margin: 16px 0; font-style: italic; }
   .badge { display: inline-block; background: #ebf4ff; color: #2b6cb0; padding: 2px 10px; border-radius: 12px; font-size: 13px; }
-  .warning { background: #fef3c7; padding: 12px 16px; border-left: 4px solid #f59e0b; margin: 16px 0; border-radius: 4px; }
-</style></head><body>${htmlContent}</body></html>`;
+  .warning { background: #fef3c7; padding: 12px 16px; border-left: 4px solid #f59e0b; margin: 16px 0; border-radius: 4px; }`;
+
+    const filename = `Brief_${project.client_name.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}`;
+
+    // Format PDF : retourner le HTML stylé en JSON pour conversion côté client
+    if (format === 'pdf') {
+      const pdfHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${styles}</style></head><body>${htmlContent}</body></html>`;
+      return NextResponse.json({ html: pdfHtml, filename });
+    }
+
+    // Format DOC : retourner le fichier .doc avec BOM UTF-8 pour les accents
+    const fullDoc = `\ufeff<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><style>${styles}</style></head><body>${htmlContent}</body></html>`;
 
     return new NextResponse(fullDoc, {
       headers: {
-        'Content-Type': 'application/msword',
-        'Content-Disposition': `attachment; filename="Brief_${project.client_name.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.doc"`,
+        'Content-Type': 'application/msword; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${filename}.doc"`,
       },
     });
   } catch (err) {
