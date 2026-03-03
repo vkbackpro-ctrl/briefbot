@@ -10,8 +10,8 @@ function formatTokens(n) {
 }
 
 function estimateCost(tokens) {
-  // Rough estimate: average of input ($3/M) and output ($15/M) = ~$9/M blended
-  return (tokens / 1000000 * 9).toFixed(2);
+  // Rough estimate: $9/M blended rate, converted to EUR (~1.10 USD/EUR)
+  return (tokens / 1000000 * 8.18).toFixed(2);
 }
 
 function tokenPercentage(used, limit) {
@@ -50,7 +50,7 @@ function TokenBar({ used, limit, showCost = false, size = 'normal' }) {
       </div>
       {showCost && (
         <div className="text-[10px] text-slate-400">
-          Coût estimé : ~{estimateCost(used || 0)}$
+          Coût estimé : ~{estimateCost(used || 0)}€
         </div>
       )}
     </div>
@@ -82,7 +82,7 @@ export default function Dashboard() {
   const [newClient, setNewClient] = useState('');
   const [newUrl, setNewUrl] = useState('');
   const [newContext, setNewContext] = useState('');
-  const [newTokensLimit, setNewTokensLimit] = useState('50000');
+  const [newTokensLimit, setNewTokensLimit] = useState('600000');
 
   const chatEndRef = useRef(null);
 
@@ -373,17 +373,17 @@ export default function Dashboard() {
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Limite de tokens</label>
-              <p className="text-xs text-slate-400 mb-2">50 000 tokens ≈ 30-40 échanges ≈ ~0.45$. Tu peux augmenter plus tard.</p>
+              <p className="text-xs text-slate-400 mb-2">5€ ≈ 600k tokens ≈ 400-500 échanges. Tu peux augmenter plus tard.</p>
               <div className="flex gap-2">
-                {['25000', '50000', '100000', '200000'].map(v => (
+                {[{ value: '600000', label: '5€' }, { value: '1200000', label: '10€' }].map(({ value, label }) => (
                   <button
-                    key={v}
-                    onClick={() => setNewTokensLimit(v)}
+                    key={value}
+                    onClick={() => setNewTokensLimit(value)}
                     className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-all ${
-                      newTokensLimit === v ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+                      newTokensLimit === value ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
                     }`}
                   >
-                    {formatTokens(parseInt(v))} (~{estimateCost(parseInt(v))}$)
+                    {label} (~{formatTokens(parseInt(value))} tokens)
                   </button>
                 ))}
               </div>
