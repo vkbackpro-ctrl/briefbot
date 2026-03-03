@@ -315,14 +315,26 @@ export default function Dashboard() {
         const html2pdf = (await import('html2pdf.js')).default;
         const container = document.createElement('div');
         container.innerHTML = data.html;
-        container.style.position = 'absolute';
-        container.style.left = '-9999px';
+        // Visible pour html2canvas mais hors de la vue utilisateur
+        Object.assign(container.style, {
+          position: 'fixed',
+          top: '0',
+          left: '0',
+          width: '210mm',
+          zIndex: '-9999',
+          opacity: '0',
+          pointerEvents: 'none',
+          background: 'white',
+          padding: '20px',
+        });
         document.body.appendChild(container);
+        // Attendre le rendu du navigateur
+        await new Promise(r => setTimeout(r, 300));
         await html2pdf().set({
-          margin: [15, 15, 15, 15],
+          margin: [10, 10, 10, 10],
           filename: `${data.filename}.pdf`,
           image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+          html2canvas: { scale: 2, useCORS: true, letterRendering: true, width: container.scrollWidth, height: container.scrollHeight },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
         }).from(container).save();
         document.body.removeChild(container);

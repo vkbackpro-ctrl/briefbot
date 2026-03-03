@@ -88,9 +88,9 @@ export async function POST(request) {
 
     const filename = `Brief_${project.client_name.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}`;
 
-    // Format PDF : retourner le HTML stylé en JSON pour conversion côté client
+    // Format PDF : retourner le body + styles dans un wrapper div (pas de document complet)
     if (format === 'pdf') {
-      const pdfHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${styles}</style></head><body>${htmlContent}</body></html>`;
+      const pdfHtml = `<style>${styles}</style><div class="pdf-export" style="font-family:Calibri,sans-serif;color:#1a1a1a;line-height:1.7;max-width:800px;margin:0 auto;">${htmlContent}</div>`;
       return NextResponse.json({ html: pdfHtml, filename });
     }
 
