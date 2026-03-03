@@ -88,9 +88,14 @@ export async function POST(request) {
 
     const filename = `Brief_${project.client_name.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}`;
 
-    // Format PDF : retourner le body + styles dans un wrapper div (pas de document complet)
+    // Format PDF : retourner un document HTML complet pour impression via iframe
     if (format === 'pdf') {
-      const pdfHtml = `<style>${styles}</style><div class="pdf-export" style="font-family:Calibri,sans-serif;color:#1a1a1a;line-height:1.7;max-width:800px;margin:0 auto;">${htmlContent}</div>`;
+      const pdfHtml = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>${filename}</title>
+<style>
+  @media print { @page { margin: 15mm; } }
+  ${styles}
+</style></head><body>${htmlContent}</body></html>`;
       return NextResponse.json({ html: pdfHtml, filename });
     }
 

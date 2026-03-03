@@ -312,42 +312,30 @@ export default function Dashboard() {
       if (format === 'pdf') {
         const data = await res.json();
         if (data.error) throw new Error(data.error);
-        const html2pdf = (await import('html2pdf.js')).default;
 
-        // Overlay blanc pour masquer le flash de contenu à l'utilisateur
-        const overlay = document.createElement('div');
-        Object.assign(overlay.style, {
-          position: 'fixed', top: '0', left: '0',
-          width: '100vw', height: '100vh',
-          background: 'white', zIndex: '999999',
+        // Utiliser un iframe caché + print natif du navigateur
+        const iframe = document.createElement('iframe');
+        Object.assign(iframe.style, {
+          position: 'fixed', left: '-9999px', top: '0',
+          width: '0', height: '0', border: 'none',
         });
-        document.body.appendChild(overlay);
+        document.body.appendChild(iframe);
 
-        // Container VISIBLE (opacity 1) pour que html2canvas puisse capturer
-        const container = document.createElement('div');
-        container.innerHTML = data.html;
-        Object.assign(container.style, {
-          position: 'fixed',
-          top: '0',
-          left: '0',
-          width: '794px',
-          background: 'white',
-          padding: '40px',
-          zIndex: '999998',
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+        iframeDoc.open();
+        iframeDoc.write(data.html);
+        iframeDoc.close();
+
+        // Attendre le chargement complet puis imprimer
+        await new Promise(resolve => {
+          iframe.onload = resolve;
+          setTimeout(resolve, 1000); // fallback
         });
-        document.body.appendChild(container);
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
 
-        await new Promise(r => setTimeout(r, 500));
-        await html2pdf().set({
-          margin: [10, 10, 10, 10],
-          filename: `${data.filename}.pdf`,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, letterRendering: true },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        }).from(container).save();
-
-        document.body.removeChild(container);
-        document.body.removeChild(overlay);
+        // Nettoyer après fermeture du dialogue d'impression
+        setTimeout(() => document.body.removeChild(iframe), 2000);
       } else {
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
