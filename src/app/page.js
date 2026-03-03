@@ -10,8 +10,9 @@ function formatTokens(n) {
 }
 
 function estimateCost(tokens) {
-  // Rough estimate: $9/M blended rate, converted to EUR (~1.10 USD/EUR)
-  return (tokens / 1000000 * 8.18).toFixed(2);
+  // $3/M input + $15/M output, ~80% input / 20% output = ~$5.4/M blended
+  // Converted to EUR at ~1.10 USD/EUR ≈ €5/M tokens
+  return (tokens / 1000000 * 5).toFixed(2);
 }
 
 function tokenPercentage(used, limit) {
@@ -82,7 +83,7 @@ export default function Dashboard() {
   const [newClient, setNewClient] = useState('');
   const [newUrl, setNewUrl] = useState('');
   const [newContext, setNewContext] = useState('');
-  const [newTokensLimit, setNewTokensLimit] = useState('600000');
+  const [newTokensLimit, setNewTokensLimit] = useState('1000000');
 
   const chatEndRef = useRef(null);
 
@@ -373,9 +374,9 @@ export default function Dashboard() {
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Limite de tokens</label>
-              <p className="text-xs text-slate-400 mb-2">5€ ≈ 600k tokens ≈ 400-500 échanges. Tu peux augmenter plus tard.</p>
+              <p className="text-xs text-slate-400 mb-2">5€ ≈ 1M tokens ≈ 3-4 briefings complets. Tu peux augmenter plus tard.</p>
               <div className="flex gap-2">
-                {[{ value: '600000', label: '5€' }, { value: '1200000', label: '10€' }].map(({ value, label }) => (
+                {[{ value: '1000000', label: '5€' }, { value: '2000000', label: '10€' }].map(({ value, label }) => (
                   <button
                     key={value}
                     onClick={() => setNewTokensLimit(value)}
