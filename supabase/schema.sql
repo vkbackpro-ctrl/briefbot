@@ -71,8 +71,34 @@ CREATE POLICY "Insertion messages" ON messages
   FOR INSERT WITH CHECK (true);
 
 -- Politique : mise à jour projets (via anon key)
+-- Seules les colonnes current_phase et phases_completed peuvent être modifiées
+-- tokens_limit et tokens_used sont protégés par un trigger
 CREATE POLICY "Update projets" ON projects
   FOR UPDATE USING (true);
+
+-- Trigger : empêcher la modification de tokens_limit via l'anon key
+-- Seuls les appels via service_role (API routes) peuvent modifier tokens_limit
+CREATE OR REPLACE FUNCTION protect_tokens_limit()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Si tokens_limit est modifié et que l'appel ne vient pas du service_role
+  IF NEW.tokens_limit IS DISTINCT FROM OLD.tokens_limit
+     AND current_setting('role') != 'service_role' THEN
+    NEW.tokens_limit := OLD.tokens_limit;
+  END IF;
+  -- Empêcher aussi la modification directe de tokens_used (doit passer par la RPC)
+  IF NEW.tokens_used IS DISTINCT FROM OLD.tokens_used
+     AND current_setting('role') != 'service_role' THEN
+    NEW.tokens_used := OLD.tokens_used;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER protect_tokens_limit_trigger
+  BEFORE UPDATE ON projects
+  FOR EACH ROW
+  EXECUTE FUNCTION protect_tokens_limit();
 
 -- Politique : insertion projets (dashboard consultant uniquement, via API route)
 CREATE POLICY "Insertion projets" ON projects

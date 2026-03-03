@@ -239,7 +239,7 @@ export default function Dashboard() {
       setMessages(prev => [...prev, aiMsg]);
 
       // Update token count locally
-      if (data.tokens_used !== undefined) {
+      if (data.tokens_used != null) {
         setSelectedProject(prev => ({ ...prev, tokens_used: data.tokens_used }));
       }
 
@@ -290,7 +290,7 @@ export default function Dashboard() {
       }
       if (data.error) throw new Error(data.error);
       setMessages(prev => [...prev, { role: 'assistant', content: data.content, mode, created_at: new Date().toISOString() }]);
-      if (data.tokens_used !== undefined) {
+      if (data.tokens_used != null) {
         setSelectedProject(prev => ({ ...prev, tokens_used: data.tokens_used }));
       }
     } catch (e) {
@@ -419,7 +419,7 @@ export default function Dashboard() {
         {sidebarOpen && (
           <div className="w-64 bg-white border-r border-slate-200 flex flex-col flex-shrink-0">
             <div className="p-4 border-b border-slate-100">
-              <button onClick={() => { setView('list'); setSelectedProject(null); }} className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1 mb-3">← Projets</button>
+              <button onClick={() => { setView('list'); setSelectedProject(null); loadProjects(); }} className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1 mb-3">← Projets</button>
               <h2 className="font-bold text-slate-800 text-sm truncate">{selectedProject.name}</h2>
               <p className="text-xs text-slate-400 truncate">{selectedProject.client_name}</p>
               <button onClick={() => copyShareLink(selectedProject.share_token)} className="mt-2 text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-2 py-1 rounded-md hover:bg-amber-100 transition-all">
