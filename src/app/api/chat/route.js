@@ -71,10 +71,13 @@ export async function POST(request) {
     const outputTokens = response.usage?.output_tokens || 0;
     const totalTokens = inputTokens + outputTokens;
 
-    const { data: newTokensUsed } = await sb.rpc('increment_project_tokens', {
+    const { data: newTokensUsed, error: rpcErr } = await sb.rpc('increment_project_tokens', {
       project_id: projectId,
       amount: totalTokens,
     });
+
+    // Fallback: si la RPC échoue, calculer manuellement
+    const actualTokensUsed = rpcErr ? (project.tokens_used || 0) + totalTokens : newTokensUsed;
 
     await sb.from('messages').insert({
       project_id: projectId,
@@ -100,7 +103,7 @@ export async function POST(request) {
 
     return NextResponse.json({
       content: aiText,
-      tokens_used: newTokensUsed,
+      tokens_used: actualTokensUsed,
       tokens_limit: project.tokens_limit,
       tokens_this_message: totalTokens,
     });
