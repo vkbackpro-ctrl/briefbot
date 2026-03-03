@@ -10,8 +10,9 @@ function formatTokens(n) {
 }
 
 function estimateCost(tokens) {
-  // Rough estimate: average of input ($3/M) and output ($15/M) = ~$9/M blended
-  return (tokens / 1000000 * 9).toFixed(2);
+  // $3/M input + $15/M output, ~80% input / 20% output = ~$5.4/M blended
+  // Converted to EUR at ~1.10 USD/EUR ≈ €5/M tokens
+  return (tokens / 1000000 * 5).toFixed(2);
 }
 
 function tokenPercentage(used, limit) {
@@ -50,7 +51,7 @@ function TokenBar({ used, limit, showCost = false, size = 'normal' }) {
       </div>
       {showCost && (
         <div className="text-[10px] text-slate-400">
-          Coût estimé : ~{estimateCost(used || 0)}$
+          Coût estimé : ~{estimateCost(used || 0)}€
         </div>
       )}
     </div>
@@ -82,7 +83,7 @@ export default function Dashboard() {
   const [newClient, setNewClient] = useState('');
   const [newUrl, setNewUrl] = useState('');
   const [newContext, setNewContext] = useState('');
-  const [newTokensLimit, setNewTokensLimit] = useState('50000');
+  const [newTokensLimit, setNewTokensLimit] = useState('1000000');
 
   const chatEndRef = useRef(null);
 
@@ -373,17 +374,17 @@ export default function Dashboard() {
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Limite de tokens</label>
-              <p className="text-xs text-slate-400 mb-2">50 000 tokens ≈ 30-40 échanges ≈ ~0.45$. Tu peux augmenter plus tard.</p>
+              <p className="text-xs text-slate-400 mb-2">5€ ≈ 1M tokens ≈ 3-4 briefings complets. Tu peux augmenter plus tard.</p>
               <div className="flex gap-2">
-                {['25000', '50000', '100000', '200000'].map(v => (
+                {[{ value: '1000000', label: '5€' }, { value: '2000000', label: '10€' }].map(({ value, label }) => (
                   <button
-                    key={v}
-                    onClick={() => setNewTokensLimit(v)}
+                    key={value}
+                    onClick={() => setNewTokensLimit(value)}
                     className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-all ${
-                      newTokensLimit === v ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+                      newTokensLimit === value ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
                     }`}
                   >
-                    {formatTokens(parseInt(v))} (~{estimateCost(parseInt(v))}$)
+                    {label} (~{formatTokens(parseInt(value))} tokens)
                   </button>
                 ))}
               </div>
