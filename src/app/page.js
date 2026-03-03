@@ -299,23 +299,44 @@ export default function Dashboard() {
     setChatLoading(false);
   };
 
-  const handleExport = async () => {
+  const handleExport = async (format = 'doc') => {
     if (exporting || messages.length < 2) return;
     setExporting(true);
     try {
       const res = await fetch('/api/export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId: selectedProject.id, password: storedPw }),
+        body: JSON.stringify({ projectId: selectedProject.id, password: storedPw, format }),
       });
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Brief_${selectedProject.client_name.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.doc`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+
+      if (format === 'pdf') {
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        const html2pdf = (await import('html2pdf.js')).default;
+        const container = document.createElement('div');
+        container.innerHTML = data.html;
+        container.style.position = 'absolute';
+        container.style.left = '-9999px';
+        document.body.appendChild(container);
+        await html2pdf().set({
+          margin: [15, 15, 15, 15],
+          filename: `${data.filename}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        }).from(container).save();
+        document.body.removeChild(container);
+      } else {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Brief_${selectedProject.client_name.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.doc`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
     } catch (e) {
       setError('Erreur export : ' + e.message);
     }
@@ -488,18 +509,32 @@ export default function Dashboard() {
               ))}
             </div>
 
-            <div className="p-3 border-t border-slate-100">
-              <button
-                onClick={handleExport}
-                disabled={exporting || messages.length < 2}
-                className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all ${
-                  exporting ? 'bg-amber-100 text-amber-600'
-                  : messages.length < 2 ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 shadow-md'
-                }`}
-              >
-                {exporting ? '⏳ Génération...' : '📄 Exporter (.doc)'}
-              </button>
+            <div className="p-3 border-t border-slate-100 space-y-2">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Exporter le brief</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleExport('doc')}
+                  disabled={exporting || messages.length < 2}
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                    exporting ? 'bg-amber-100 text-amber-600'
+                    : messages.length < 2 ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 shadow-md'
+                  }`}
+                >
+                  {exporting ? '⏳...' : '.doc'}
+                </button>
+                <button
+                  onClick={() => handleExport('pdf')}
+                  disabled={exporting || messages.length < 2}
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                    exporting ? 'bg-amber-100 text-amber-600'
+                    : messages.length < 2 ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600 shadow-md'
+                  }`}
+                >
+                  {exporting ? '⏳...' : '.pdf'}
+                </button>
+              </div>
             </div>
           </div>
         )}
