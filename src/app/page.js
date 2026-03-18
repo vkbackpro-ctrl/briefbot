@@ -248,11 +248,20 @@ export default function Dashboard() {
       const phaseMatch = data.content.match(/✅\s*Phase\s*(\d+)/);
       if (phaseMatch) {
         const completedId = parseInt(phaseMatch[1]);
-        setSelectedProject(prev => ({
-          ...prev,
-          phases_completed: [...new Set([...(prev.phases_completed || []), completedId])],
-          current_phase: Math.min(completedId + 1, 10),
-        }));
+        setSelectedProject(prev => {
+          const updated = [...new Set([...(prev.phases_completed || []), completedId])];
+          const PHASES = require('@/lib/phases').PHASES;
+          const allIds = PHASES.map(p => p.id);
+          const nextUncompleted = allIds.find(id => id > 0 && !updated.includes(id));
+          return { ...prev, phases_completed: updated, current_phase: nextUncompleted !== undefined ? nextUncompleted : 10 };
+        });
+      }
+
+      // Détecter aussi [Phase X — ...] pour mettre à jour la phase active
+      const phaseIndicator = data.content.match(/\[Phase\s*(\d+)\s*[—–-]/);
+      if (phaseIndicator && !phaseMatch) {
+        const indicatedPhase = parseInt(phaseIndicator[1]);
+        setSelectedProject(prev => ({ ...prev, current_phase: indicatedPhase }));
       }
     } catch (e) {
       setError('Erreur : ' + e.message);

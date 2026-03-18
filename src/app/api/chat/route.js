@@ -288,22 +288,44 @@ export async function POST(request) {
 
     // Détecter la complétion de phase → générer un résumé automatiquement
     const phaseMatch = aiText.match(/✅\s*Phase\s*(\d+)/);
+    const currentPhases = project.phases_completed || [];
+    let updatedPhases = [...currentPhases];
+    let newCurrentPhase = project.current_phase ?? 0;
+
     if (phaseMatch) {
       const completedId = parseInt(phaseMatch[1]);
-      const currentPhases = project.phases_completed || [];
-      if (!currentPhases.includes(completedId)) {
-        await sb
-          .from('projects')
-          .update({
-            phases_completed: [...currentPhases, completedId],
-            current_phase: Math.min(completedId + 1, 10),
-          })
-          .eq('id', projectId);
+      if (!updatedPhases.includes(completedId)) {
+        updatedPhases.push(completedId);
 
-        // Générer le résumé de la phase complétée (en arrière-plan, non bloquant)
+        // Trouver la prochaine phase non complétée (pas juste +1)
+        const allPhaseIds = PHASES.map(p => p.id);
+        const nextUncompleted = allPhaseIds.find(id => id > 0 && !updatedPhases.includes(id));
+        newCurrentPhase = nextUncompleted !== undefined ? nextUncompleted : 10;
+
+        // Générer le résumé de la phase complétée (en arrière-plan)
         generatePhaseSummary(sb, projectId, completedId, allMessages)
           .catch(err => console.error('[Phase Summary] Background error:', err));
       }
+    }
+
+    // Détecter aussi quand l'IA indique être sur une phase [Phase X — ...]
+    const phaseIndicator = aiText.match(/\[Phase\s*(\d+)\s*[—–-]/);
+    if (phaseIndicator) {
+      const indicatedPhase = parseInt(phaseIndicator[1]);
+      if (indicatedPhase !== newCurrentPhase) {
+        newCurrentPhase = indicatedPhase;
+      }
+    }
+
+    // Mettre à jour le projet si quelque chose a changé
+    if (updatedPhases.length !== currentPhases.length || newCurrentPhase !== (project.current_phase ?? 0)) {
+      await sb
+        .from('projects')
+        .update({
+          phases_completed: updatedPhases,
+          current_phase: newCurrentPhase,
+        })
+        .eq('id', projectId);
     }
 
     return NextResponse.json({
