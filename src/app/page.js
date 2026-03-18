@@ -301,61 +301,90 @@ export default function Dashboard() {
     setChatLoading(false);
   };
 
+  const [exportProgress, setExportProgress] = useState('');
+
   const handleExport = async (format = 'doc') => {
     if (exporting || messages.length < 2) return;
     setExporting(true);
     setError(null);
+    setExportProgress('');
+
     try {
-      const res = await fetch('/api/export', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId: selectedProject.id, password: storedPw, format }),
-      });
+      // ── Générer le document en 3 parties (chacune < 10s) ──
+      const htmlParts = [];
+      const totalParts = 3;
 
-      // Vérifier si la réponse est OK avant de parser
-      if (!res.ok) {
-        let errMsg = `Erreur ${res.status}`;
-        try {
-          const errData = await res.json();
-          errMsg = errData.error || errMsg;
-        } catch {
-          // La réponse n'est pas du JSON (timeout Vercel, etc.)
-          if (res.status === 504) errMsg = 'La génération du document a pris trop de temps. Réessayez.';
-          else errMsg = `Erreur serveur (${res.status}). Réessayez dans quelques instants.`;
+      for (let part = 0; part < totalParts; part++) {
+        setExportProgress(`Génération ${part + 1}/${totalParts}...`);
+
+        const res = await fetch('/api/export', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ projectId: selectedProject.id, password: storedPw, format, part }),
+        });
+
+        if (!res.ok) {
+          let errMsg = `Erreur ${res.status}`;
+          try {
+            const errData = await res.json();
+            errMsg = errData.error || errMsg;
+          } catch {
+            if (res.status === 504) errMsg = `Partie ${part + 1} a pris trop de temps. Réessayez.`;
+            else errMsg = `Erreur serveur (${res.status}). Réessayez.`;
+          }
+          throw new Error(errMsg);
         }
-        throw new Error(errMsg);
-      }
 
-      if (format === 'pdf') {
         const data = await res.json();
         if (data.error) throw new Error(data.error);
+        htmlParts.push(data.html);
+
+        // Update cost display
+        if (data.cost_usd != null) {
+          setSelectedProject(prev => ({ ...prev, cost_micro_usd: Math.round(data.cost_usd * 1000000) }));
+        }
+      }
+
+      // ── Assembler le document final ──
+      setExportProgress('Assemblage du document...');
+      const fullHtml = htmlParts.join('\n\n');
+
+      const styles = `
+        body { font-family: Calibri, sans-serif; color: #1a1a1a; line-height: 1.7; padding: 50px; max-width: 800px; margin: 0 auto; }
+        h1 { color: #1e3a5f; font-size: 28px; border-bottom: 3px solid #e8913a; padding-bottom: 10px; margin-top: 40px; }
+        h2 { color: #2c5282; font-size: 22px; margin-top: 30px; }
+        h3 { color: #4a6fa5; font-size: 18px; }
+        table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+        th, td { border: 1px solid #cbd5e0; padding: 10px 14px; text-align: left; }
+        th { background-color: #edf2f7; color: #2d3748; font-weight: 600; }
+        tr:nth-child(even) { background-color: #f7fafc; }
+        ul, ol { padding-left: 24px; }
+        li { margin-bottom: 6px; }
+        blockquote { border-left: 4px solid #e8913a; padding: 12px 16px; background: #fef7ed; margin: 16px 0; font-style: italic; }`;
+
+      const filename = `Brief_${selectedProject.client_name.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}`;
+
+      if (format === 'pdf') {
+        const pdfHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${filename}</title><style>@media print{@page{margin:15mm}}${styles}</style></head><body>${fullHtml}</body></html>`;
 
         const iframe = document.createElement('iframe');
-        Object.assign(iframe.style, {
-          position: 'fixed', left: '-9999px', top: '0',
-          width: '0', height: '0', border: 'none',
-        });
+        Object.assign(iframe.style, { position: 'fixed', left: '-9999px', top: '0', width: '0', height: '0', border: 'none' });
         document.body.appendChild(iframe);
-
         const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
         iframeDoc.open();
-        iframeDoc.write(data.html);
+        iframeDoc.write(pdfHtml);
         iframeDoc.close();
-
-        await new Promise(resolve => {
-          iframe.onload = resolve;
-          setTimeout(resolve, 1000);
-        });
+        await new Promise(resolve => { iframe.onload = resolve; setTimeout(resolve, 1000); });
         iframe.contentWindow.focus();
         iframe.contentWindow.print();
-
         setTimeout(() => document.body.removeChild(iframe), 2000);
       } else {
-        const blob = await res.blob();
+        const docHtml = `\ufeff<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><style>${styles}</style></head><body>${fullHtml}</body></html>`;
+        const blob = new Blob([docHtml], { type: 'application/msword' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `Brief_${selectedProject.client_name.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.doc`;
+        a.download = `${filename}.doc`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -365,6 +394,7 @@ export default function Dashboard() {
       setError('Erreur export : ' + e.message);
     }
     setExporting(false);
+    setExportProgress('');
   };
 
   // Markdown
@@ -540,6 +570,9 @@ export default function Dashboard() {
 
             <div className="p-3 border-t border-slate-100 space-y-2">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Exporter le brief</label>
+              {exportProgress && (
+                <div className="text-[10px] text-amber-600 font-semibold animate-pulse">{exportProgress}</div>
+              )}
               <div className="flex gap-2">
                 <button
                   onClick={() => handleExport('doc')}
@@ -550,7 +583,7 @@ export default function Dashboard() {
                     : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 shadow-md'
                   }`}
                 >
-                  {exporting ? '⏳...' : '.doc'}
+                  {exporting ? exportProgress || '⏳...' : '.doc'}
                 </button>
                 <button
                   onClick={() => handleExport('pdf')}
@@ -561,7 +594,7 @@ export default function Dashboard() {
                     : 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600 shadow-md'
                   }`}
                 >
-                  {exporting ? '⏳...' : '.pdf'}
+                  {exporting ? exportProgress || '⏳...' : '.pdf'}
                 </button>
               </div>
             </div>
