@@ -4,8 +4,8 @@ import { getServiceSupabase } from '@/lib/supabase';
 import { buildSystemPrompt } from '@/lib/phases';
 import { TOOLS, executeTool } from '@/lib/tools';
 
-// Augmenter le timeout Vercel pour les appels API avec tool use
-export const maxDuration = 120;
+// Edge Runtime = 30s timeout sur plan Hobby (au lieu de 10s en serverless)
+export const runtime = 'edge';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,

@@ -3,8 +3,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { getServiceSupabase } from '@/lib/supabase';
 import { buildExportPrompt } from '@/lib/phases';
 
-// Augmenter le timeout Vercel (60s max sur Pro, 300s sur Enterprise)
-export const maxDuration = 120;
+// Edge Runtime = 30s timeout sur plan Hobby (au lieu de 10s en serverless)
+export const runtime = 'edge';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -79,7 +79,7 @@ export async function POST(request) {
     // Première passe : générer le document complet
     const response1 = await callWithRetry({
       model: 'claude-sonnet-4-6',
-      max_tokens: 16000,
+      max_tokens: 8000,
       messages: [{ role: 'user', content: exportPrompt }],
     });
 
@@ -96,7 +96,7 @@ export async function POST(request) {
       console.log('[Export] Réponse tronquée, demande de continuation...');
       const response2 = await callWithRetry({
         model: 'claude-sonnet-4-6',
-        max_tokens: 16000,
+        max_tokens: 8000,
         messages: [
           { role: 'user', content: exportPrompt },
           { role: 'assistant', content: htmlContent },
