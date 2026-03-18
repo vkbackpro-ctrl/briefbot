@@ -4,6 +4,9 @@ import { getServiceSupabase } from '@/lib/supabase';
 import { buildSystemPrompt } from '@/lib/phases';
 import { TOOLS, executeTool } from '@/lib/tools';
 
+// Augmenter le timeout Vercel pour les appels API avec tool use
+export const maxDuration = 120;
+
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });

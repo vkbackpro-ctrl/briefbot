@@ -3,6 +3,9 @@ import Anthropic from '@anthropic-ai/sdk';
 import { getServiceSupabase } from '@/lib/supabase';
 import { buildExportPrompt } from '@/lib/phases';
 
+// Augmenter le timeout Vercel (60s max sur Pro, 300s sur Enterprise)
+export const maxDuration = 120;
+
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });

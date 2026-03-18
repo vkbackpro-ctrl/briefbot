@@ -304,6 +304,7 @@ export default function Dashboard() {
   const handleExport = async (format = 'doc') => {
     if (exporting || messages.length < 2) return;
     setExporting(true);
+    setError(null);
     try {
       const res = await fetch('/api/export', {
         method: 'POST',
@@ -311,11 +312,24 @@ export default function Dashboard() {
         body: JSON.stringify({ projectId: selectedProject.id, password: storedPw, format }),
       });
 
+      // Vérifier si la réponse est OK avant de parser
+      if (!res.ok) {
+        let errMsg = `Erreur ${res.status}`;
+        try {
+          const errData = await res.json();
+          errMsg = errData.error || errMsg;
+        } catch {
+          // La réponse n'est pas du JSON (timeout Vercel, etc.)
+          if (res.status === 504) errMsg = 'La génération du document a pris trop de temps. Réessayez.';
+          else errMsg = `Erreur serveur (${res.status}). Réessayez dans quelques instants.`;
+        }
+        throw new Error(errMsg);
+      }
+
       if (format === 'pdf') {
         const data = await res.json();
         if (data.error) throw new Error(data.error);
 
-        // Utiliser un iframe caché + print natif du navigateur
         const iframe = document.createElement('iframe');
         Object.assign(iframe.style, {
           position: 'fixed', left: '-9999px', top: '0',
@@ -328,15 +342,13 @@ export default function Dashboard() {
         iframeDoc.write(data.html);
         iframeDoc.close();
 
-        // Attendre le chargement complet puis imprimer
         await new Promise(resolve => {
           iframe.onload = resolve;
-          setTimeout(resolve, 1000); // fallback
+          setTimeout(resolve, 1000);
         });
         iframe.contentWindow.focus();
         iframe.contentWindow.print();
 
-        // Nettoyer après fermeture du dialogue d'impression
         setTimeout(() => document.body.removeChild(iframe), 2000);
       } else {
         const blob = await res.blob();
