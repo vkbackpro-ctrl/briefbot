@@ -253,7 +253,7 @@ export default function Dashboard() {
           const PHASES = require('@/lib/phases').PHASES;
           const allIds = PHASES.map(p => p.id);
           const nextUncompleted = allIds.find(id => id > 0 && !updated.includes(id));
-          return { ...prev, phases_completed: updated, current_phase: nextUncompleted !== undefined ? nextUncompleted : 10 };
+          return { ...prev, phases_completed: updated, current_phase: nextUncompleted !== undefined ? nextUncompleted : 11 };
         });
       }
 

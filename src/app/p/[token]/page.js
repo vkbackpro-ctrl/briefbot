@@ -129,7 +129,7 @@ export default function ClientPage() {
         setProject(prev => ({
           ...prev,
           phases_completed: [...new Set([...(prev.phases_completed || []), completedId])],
-          current_phase: Math.min(completedId + 1, 10),
+          current_phase: Math.min(completedId + 1, 11),
         }));
       }
     } catch (e) {
@@ -236,10 +236,10 @@ export default function ClientPage() {
 
           <div className="p-4 border-t border-slate-100">
             <div className="text-center text-[10px] text-slate-400">
-              {(project.phases_completed || []).filter(id => id > 0).length}/10 phases complétées
+              {(project.phases_completed || []).filter(id => id > 0).length}/11 phases complétées
             </div>
             <div className="w-full bg-slate-200 rounded-full h-1.5 mt-2">
-              <div className="bg-gradient-to-r from-amber-500 to-orange-500 h-1.5 rounded-full transition-all" style={{ width: `${((project.phases_completed || []).filter(id => id > 0).length / 10) * 100}%` }} />
+              <div className="bg-gradient-to-r from-amber-500 to-orange-500 h-1.5 rounded-full transition-all" style={{ width: `${((project.phases_completed || []).filter(id => id > 0).length / 11) * 100}%` }} />
             </div>
           </div>
         </div>

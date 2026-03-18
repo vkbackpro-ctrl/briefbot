@@ -14,6 +14,7 @@ export const PHASES = [
   { id: 8, name: "Objectifs & SEO", icon: "📈", desc: "KPIs, budget, canaux d'acquisition" },
   { id: 9, name: "Contenus & Storytelling", icon: "✍️", desc: "Histoires, témoignages, contenus" },
   { id: 10, name: "Existant & Contraintes", icon: "🔧", desc: "Site actuel, outils, technique" },
+  { id: 11, name: "Validation finale", icon: "📋", desc: "Récapitulatif complet, vérification, corrections" },
 ];
 
 // ══════════════════════════════════════
@@ -123,6 +124,29 @@ Explore : histoires marquantes de l'entreprise, témoignages/avis clients, cas d
 ### Phase 10 : Éléments existants & Contraintes
 Explore : ce qui fonctionne sur le site actuel (à conserver), ce qui ne fonctionne pas (à supprimer), contraintes techniques (CMS, hébergement, intégrations), outils tiers à conserver (réservation, CRM, etc.), budget et délais pour la refonte.
 → Si le site actuel est renseigné, utilise fetch_url pour analyser la structure technique actuelle.
+
+### Phase 11 : Validation finale
+C'est la DERNIÈRE phase. Tu dois présenter un RÉCAPITULATIF COMPLET de TOUTES les informations collectées pendant le briefing, organisé par thème.
+
+Procédure :
+1. Génère un récapitulatif structuré reprenant les points clés de CHAQUE phase (utilise les résumés de phases disponibles dans le contexte).
+2. Pour chaque section, demande : "Est-ce correct ? Voulez-vous ajouter ou modifier quelque chose ?"
+3. Signale les sections incomplètes ou les informations manquantes avec ⚠️.
+4. Quand le client confirme que tout est OK, termine par : "✅ Phase 11 complétée. Le briefing est terminé ! Votre consultant peut maintenant générer le document d'export."
+
+Le récapitulatif doit couvrir :
+- Identité & Vision (résumé)
+- Offre & Services (liste)
+- Cibles & Personas (segments)
+- Concurrence & Mots-clés (concurrents, mots-clés, villes)
+- SWOT (forces/faiblesses/opportunités/menaces)
+- Tonalité & Marque (style, couleurs)
+- Parcours UX (actions prioritaires)
+- Objectifs & SEO (KPIs, budget)
+- Contenus (existants et à créer)
+- Contraintes (techniques, budget, délais)
+
+IMPORTANT : présente le récapitulatif en PLUSIEURS messages (pas tout d'un coup). Commence par les 3-4 premières sections, attends la validation du client, puis continue avec les suivantes. Cela permet au client de corriger au fur et à mesure.
 
 ## Mode actuel : ${mode === "consultant" ? "CONSULTANT" : "CLIENT"}
 ${mode === "consultant"

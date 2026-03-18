@@ -158,7 +158,7 @@ export default function Chat({ project: initialProject, initialMessages, mode: d
         setProject(prev => ({
           ...prev,
           phases_completed: [...new Set([...(prev.phases_completed || []), completedId])],
-          current_phase: Math.min(completedId + 1, 10),
+          current_phase: Math.min(completedId + 1, 11),
         }));
       }
     } catch (e) {
@@ -285,7 +285,7 @@ export default function Chat({ project: initialProject, initialMessages, mode: d
               {mode === 'consultant' ? '🔧 Consultant' : '👤 Client'}
             </div>
             <div className="text-[10px] text-slate-400">
-              {(project.phases_completed || []).filter(id => id > 0).length}/10 phases
+              {(project.phases_completed || []).filter(id => id > 0).length}/11 phases
             </div>
           </div>
         </div>

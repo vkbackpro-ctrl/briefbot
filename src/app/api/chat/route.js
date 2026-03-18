@@ -300,7 +300,7 @@ export async function POST(request) {
         // Trouver la prochaine phase non complétée (pas juste +1)
         const allPhaseIds = PHASES.map(p => p.id);
         const nextUncompleted = allPhaseIds.find(id => id > 0 && !updatedPhases.includes(id));
-        newCurrentPhase = nextUncompleted !== undefined ? nextUncompleted : 10;
+        newCurrentPhase = nextUncompleted !== undefined ? nextUncompleted : 11;
 
         // Générer le résumé de la phase complétée (en arrière-plan)
         generatePhaseSummary(sb, projectId, completedId, allMessages)
