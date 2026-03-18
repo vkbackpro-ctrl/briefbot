@@ -99,9 +99,72 @@ ${conv}`,
   },
 ];
 
+// GET : lister les exports d'un projet ou re-télécharger un export
+export async function GET(request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const projectId = searchParams.get('projectId');
+    const exportId = searchParams.get('exportId');
+    const password = searchParams.get('pw');
+    const format = searchParams.get('format') || 'doc';
+
+    if (password !== process.env.CONSULTANT_PASSWORD) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+    }
+
+    const sb = getServiceSupabase();
+
+    // Re-télécharger un export spécifique
+    if (exportId) {
+      const { data: exp } = await sb
+        .from('exports')
+        .select('*, projects(client_name)')
+        .eq('id', exportId)
+        .single();
+
+      if (!exp) {
+        return NextResponse.json({ error: 'Export non trouvé' }, { status: 404 });
+      }
+
+      return buildDocResponse(exp.html_content, { client_name: exp.projects.client_name }, format);
+    }
+
+    // Lister les exports d'un projet
+    if (projectId) {
+      const { data: exports } = await sb
+        .from('exports')
+        .select('id, format, created_at')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false });
+
+      return NextResponse.json({ exports: exports || [] });
+    }
+
+    return NextResponse.json({ error: 'projectId ou exportId requis' }, { status: 400 });
+  } catch (err) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
 export async function POST(request) {
   try {
-    const { projectId, password, format = 'doc', part } = await request.json();
+    const { projectId, password, format = 'doc', part, action, htmlContent } = await request.json();
+
+    // ── Action save : sauvegarder un export assemblé ──
+    if (action === 'save' && htmlContent) {
+      if (password !== process.env.CONSULTANT_PASSWORD) {
+        return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+      }
+      const sb = getServiceSupabase();
+      const { data, error } = await sb
+        .from('exports')
+        .insert({ project_id: projectId, format, html_content: htmlContent })
+        .select('id, created_at')
+        .single();
+
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ saved: true, export_id: data.id, created_at: data.created_at });
+    }
 
     if (!projectId) {
       return NextResponse.json({ error: 'projectId requis' }, { status: 400 });

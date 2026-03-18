@@ -302,6 +302,43 @@ export default function Dashboard() {
   };
 
   const [exportProgress, setExportProgress] = useState('');
+  const [exportHistory, setExportHistory] = useState([]);
+  const [showExportHistory, setShowExportHistory] = useState(false);
+
+  const loadExportHistory = async (projId) => {
+    try {
+      const res = await fetch(`/api/export?projectId=${projId}&pw=${encodeURIComponent(storedPw)}`);
+      const data = await res.json();
+      setExportHistory(data.exports || []);
+    } catch { setExportHistory([]); }
+  };
+
+  const redownloadExport = async (exportId, fmt) => {
+    try {
+      const res = await fetch(`/api/export?exportId=${exportId}&pw=${encodeURIComponent(storedPw)}&format=${fmt}`);
+      if (!res.ok) throw new Error('Erreur téléchargement');
+
+      if (fmt === 'pdf') {
+        const data = await res.json();
+        const iframe = document.createElement('iframe');
+        Object.assign(iframe.style, { position: 'fixed', left: '-9999px', top: '0', width: '0', height: '0', border: 'none' });
+        document.body.appendChild(iframe);
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+        iframeDoc.open(); iframeDoc.write(data.html); iframeDoc.close();
+        await new Promise(r => { iframe.onload = r; setTimeout(r, 1000); });
+        iframe.contentWindow.focus(); iframe.contentWindow.print();
+        setTimeout(() => document.body.removeChild(iframe), 2000);
+      } else {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Brief_${selectedProject.client_name.replace(/\s+/g, '_')}_export.doc`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch (e) { setError('Erreur : ' + e.message); }
+  };
 
   const handleExport = async (format = 'doc') => {
     if (exporting || messages.length < 2) return;
@@ -346,8 +383,15 @@ export default function Dashboard() {
       }
 
       // ── Assembler le document final ──
-      setExportProgress('Assemblage du document...');
+      setExportProgress('Sauvegarde...');
       const fullHtml = htmlParts.join('\n\n');
+
+      // Sauvegarder dans l'historique
+      await fetch('/api/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: selectedProject.id, password: storedPw, format, action: 'save', htmlContent: fullHtml }),
+      }).catch(() => {}); // Silencieux si ça échoue
 
       const styles = `
         body { font-family: Calibri, sans-serif; color: #1a1a1a; line-height: 1.7; padding: 50px; max-width: 800px; margin: 0 auto; }
@@ -597,6 +641,32 @@ export default function Dashboard() {
                   {exporting ? exportProgress || '⏳...' : '.pdf'}
                 </button>
               </div>
+              <button
+                onClick={() => { loadExportHistory(selectedProject.id); setShowExportHistory(!showExportHistory); }}
+                className="text-[10px] text-slate-500 hover:text-slate-700 mt-1 underline"
+              >
+                {showExportHistory ? 'Masquer l\'historique' : 'Historique des exports'}
+              </button>
+              {showExportHistory && (
+                <div className="mt-2 space-y-1.5 max-h-40 overflow-y-auto">
+                  {exportHistory.length === 0 ? (
+                    <div className="text-[10px] text-slate-400 italic">Aucun export</div>
+                  ) : exportHistory.map(exp => (
+                    <div key={exp.id} className="flex items-center justify-between bg-slate-50 rounded-lg px-2.5 py-1.5 border border-slate-200">
+                      <div className="min-w-0">
+                        <div className="text-[10px] font-semibold text-slate-600">
+                          {new Date(exp.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                        <div className="text-[9px] text-slate-400">.{exp.format}</div>
+                      </div>
+                      <div className="flex gap-1">
+                        <button onClick={() => redownloadExport(exp.id, 'doc')} className="text-[9px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded hover:bg-amber-100">.doc</button>
+                        <button onClick={() => redownloadExport(exp.id, 'pdf')} className="text-[9px] bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded hover:bg-blue-100">.pdf</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
