@@ -317,6 +317,16 @@ export async function POST(request) {
       }
     }
 
+    // Si l'IA confirme qu'une phase est déjà complétée (revisitée),
+    // s'assurer qu'elle est bien dans phases_completed
+    const alreadyDoneMatch = aiText.match(/[Pp]hase\s*(\d+).*(?:déjà complétée|déjà été couverte|déjà abordée|déjà collecté)/);
+    if (alreadyDoneMatch) {
+      const doneId = parseInt(alreadyDoneMatch[1]);
+      if (!updatedPhases.includes(doneId)) {
+        updatedPhases.push(doneId);
+      }
+    }
+
     // Mettre à jour le projet si quelque chose a changé
     if (updatedPhases.length !== currentPhases.length || newCurrentPhase !== (project.current_phase ?? 0)) {
       await sb
