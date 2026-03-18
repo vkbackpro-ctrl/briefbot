@@ -587,6 +587,35 @@ export default function Dashboard() {
               )}
             </div>
 
+            {/* Regenerate summaries */}
+            {(selectedProject.phases_completed || []).length > 0 && (
+              <div className="px-4 py-2 border-b border-slate-100">
+                <button
+                  onClick={async () => {
+                    setError(null);
+                    setExportProgress('Régénération des résumés...');
+                    try {
+                      const res = await fetch('/api/projects/regenerate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ projectId: selectedProject.id, password: storedPw }),
+                      });
+                      const data = await res.json();
+                      if (data.error) throw new Error(data.error);
+                      setExportProgress(`${data.count} résumés régénérés`);
+                      setTimeout(() => setExportProgress(''), 3000);
+                    } catch (e) {
+                      setError('Erreur : ' + e.message);
+                      setExportProgress('');
+                    }
+                  }}
+                  className="text-[10px] text-violet-600 hover:text-violet-800 hover:underline"
+                >
+                  Régénérer les résumés de phase
+                </button>
+              </div>
+            )}
+
             {/* Mode toggle */}
             <div className="px-4 py-3 border-b border-slate-100">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mode</label>
