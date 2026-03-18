@@ -4,8 +4,8 @@ import { getServiceSupabase } from '@/lib/supabase';
 import { buildSystemPrompt } from '@/lib/phases';
 import { TOOLS, executeTool } from '@/lib/tools';
 
-// Edge Runtime = 30s timeout sur plan Hobby (au lieu de 10s en serverless)
-export const runtime = 'edge';
+// Timeout max pour le plan Vercel (10s hobby, 60s pro)
+export const maxDuration = 60;
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,

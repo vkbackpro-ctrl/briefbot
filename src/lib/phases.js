@@ -154,9 +154,26 @@ RÈGLES D'UTILISATION DES OUTILS :
 // ══════════════════════════════════════
 
 export function buildExportPrompt(project, messages) {
-  const conversationText = messages
+  // Construire le texte de conversation en extrayant les résumés de phase
+  // et les réponses clés du client pour rester concis
+  let conversationText = messages
     .map(m => `${m.role === "user" ? (m.mode === "consultant" ? "CONSULTANT" : "CLIENT") : "BRIEFBOT"}: ${m.content}`)
     .join("\n\n");
+
+  // Tronquer si la conversation est trop longue (éviter timeout Vercel 10s)
+  // ~4 chars/token → 30 000 chars ≈ 7500 tokens input max
+  const MAX_CONV_CHARS = 30000;
+  if (conversationText.length > MAX_CONV_CHARS) {
+    // Garder le début (profiling + premières phases) et la fin (phases récentes)
+    const keepStart = Math.floor(MAX_CONV_CHARS * 0.4);
+    const keepEnd = Math.floor(MAX_CONV_CHARS * 0.5);
+    const start = conversationText.substring(0, keepStart);
+    const end = conversationText.substring(conversationText.length - keepEnd);
+    const skippedChars = conversationText.length - keepStart - keepEnd;
+    conversationText = start
+      + `\n\n[... ${Math.round(skippedChars / 1000)}k caractères omis pour optimisation — les informations clés sont dans les parties conservées ...]\n\n`
+      + end;
+  }
 
   return `Tu es un expert senior en rédaction de briefs stratégiques pour la refonte de sites web, la stratégie SEO et le webmarketing.
 

@@ -3,9 +3,6 @@ import Anthropic from '@anthropic-ai/sdk';
 import { getServiceSupabase } from '@/lib/supabase';
 import { buildExportPrompt } from '@/lib/phases';
 
-// Edge Runtime = 30s timeout sur plan Hobby (au lieu de 10s en serverless)
-export const runtime = 'edge';
-
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
@@ -73,56 +70,32 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Pas assez de messages pour générer un export' }, { status: 400 });
     }
 
-    // Générer le document — en 2 passes si nécessaire pour être exhaustif
+    // Construire le prompt d'export (avec troncature intégrée)
     const exportPrompt = buildExportPrompt(project, messages);
 
-    // Première passe : générer le document complet
-    const response1 = await callWithRetry({
+    const response = await callWithRetry({
       model: 'claude-sonnet-4-6',
-      max_tokens: 8000,
+      max_tokens: 4096,
       messages: [{ role: 'user', content: exportPrompt }],
     });
 
-    let htmlContent = response1.content
+    let htmlContent = response.content
       .filter(b => b.type === 'text')
       .map(b => b.text)
       .join('\n');
 
-    let totalInput = response1.usage?.input_tokens || 0;
-    let totalOutput = response1.usage?.output_tokens || 0;
-
-    // Si la réponse a été coupée (stop_reason !== 'end_turn'), demander la suite
-    if (response1.stop_reason === 'max_tokens') {
-      console.log('[Export] Réponse tronquée, demande de continuation...');
-      const response2 = await callWithRetry({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 8000,
-        messages: [
-          { role: 'user', content: exportPrompt },
-          { role: 'assistant', content: htmlContent },
-          { role: 'user', content: 'Continue exactement où tu t\'es arrêté. Génère la suite du document HTML sans répéter ce qui a déjà été écrit. Termine toutes les sections manquantes.' },
-        ],
-      });
-
-      const htmlContinuation = response2.content
-        .filter(b => b.type === 'text')
-        .map(b => b.text)
-        .join('\n');
-
-      htmlContent += htmlContinuation;
-      totalInput += response2.usage?.input_tokens || 0;
-      totalOutput += response2.usage?.output_tokens || 0;
-    }
+    const inputTokens = response.usage?.input_tokens || 0;
+    const outputTokens = response.usage?.output_tokens || 0;
 
     // Calculer et enregistrer le coût
-    const costMicro = totalInput * 3 + totalOutput * 15;
+    const costMicro = inputTokens * 3 + outputTokens * 15;
     await sb.rpc('increment_project_cost', {
       project_id: projectId,
       amount: costMicro,
     });
     await sb.rpc('increment_project_tokens', {
       project_id: projectId,
-      amount: totalInput + totalOutput,
+      amount: inputTokens + outputTokens,
     });
 
     const styles = `
