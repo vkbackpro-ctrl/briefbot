@@ -228,6 +228,7 @@ export async function POST(request) {
       const cacheWrite = response.usage?.cache_creation_input_tokens || 0;
       const cacheRead = response.usage?.cache_read_input_tokens || 0;
       const regularInput = Math.max(0, inputTokens - cacheWrite - cacheRead);
+      // Pricing Sonnet : $3/M input, $3.75/M cache write, $0.30/M cache read, $15/M output
       const costMicro = Math.round(regularInput * 3 + cacheWrite * 3.75 + cacheRead * 0.30 + outputTokens * 15);
 
       await sb.rpc('increment_project_cost', { project_id: projectId, amount: costMicro });

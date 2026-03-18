@@ -10,12 +10,14 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-// Pricing Claude Sonnet en micro-dollars par token
-// Voir https://docs.anthropic.com/en/docs/about-claude/models#model-pricing
-const COST_INPUT_MICRO = 3;          // $3/M — input normal (pas en cache)
-const COST_CACHE_WRITE_MICRO = 3.75; // $3.75/M — écriture cache
-const COST_CACHE_READ_MICRO = 0.30;  // $0.30/M — lecture cache
-const COST_OUTPUT_MICRO = 15;        // $15/M — output
+// Modèle pour le chat (questions/réponses) — Haiku = 4x moins cher
+const CHAT_MODEL = 'claude-haiku-4-5-20251001';
+
+// Pricing Claude Haiku 4.5 en micro-dollars par token
+const COST_INPUT_MICRO = 0.80;       // $0.80/M — input normal
+const COST_CACHE_WRITE_MICRO = 1.00; // $1/M — écriture cache
+const COST_CACHE_READ_MICRO = 0.08;  // $0.08/M — lecture cache
+const COST_OUTPUT_MICRO = 4;         // $4/M — output
 
 function calculateCostMicro(usage) {
   const inputTokens = usage?.input_tokens || 0;
@@ -104,7 +106,7 @@ async function generatePhaseSummary(sb, projectId, phaseId, allMessages) {
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: CHAT_MODEL,
       max_tokens: 800,
       messages: [{
         role: 'user',
@@ -224,7 +226,7 @@ export async function POST(request) {
     let maxIterations = 5;
 
     let response = await callAnthropicWithRetry({
-      model: 'claude-sonnet-4-6',
+      model: CHAT_MODEL,
       max_tokens: 1500,
       system: [
         {
@@ -261,7 +263,7 @@ export async function POST(request) {
       loopMessages.push({ role: 'user', content: toolResults });
 
       response = await callAnthropicWithRetry({
-        model: 'claude-sonnet-4-6',
+        model: CHAT_MODEL,
         max_tokens: 1500,
         system: [
           {
