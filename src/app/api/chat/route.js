@@ -341,29 +341,28 @@ export async function POST(request) {
       mode: mode || 'client',
     });
 
-    // Détecter la complétion de phase → générer un résumé automatiquement
-    const phaseMatch = aiText.match(/✅\s*Phase\s*(\d+)/);
+    // Détecter la complétion de phase → capturer TOUTES les phases complétées
+    const phaseMatches = [...aiText.matchAll(/✅\s*Phase\s*(\d+)/g)];
     const currentPhases = project.phases_completed || [];
     let updatedPhases = [...currentPhases];
     let newCurrentPhase = project.current_phase ?? 0;
 
-    if (phaseMatch) {
-      const completedId = parseInt(phaseMatch[1]);
-      const isNewCompletion = !updatedPhases.includes(completedId);
+    if (phaseMatches.length > 0) {
+      for (const match of phaseMatches) {
+        const completedId = parseInt(match[1]);
+        if (!updatedPhases.includes(completedId)) {
+          updatedPhases.push(completedId);
+        }
 
-      if (isNewCompletion) {
-        updatedPhases.push(completedId);
+        // Générer un résumé pour chaque phase complétée
+        generatePhaseSummary(sb, projectId, completedId, allMessages)
+          .catch(err => console.error(`[Phase Summary] Background error phase ${completedId}:`, err));
       }
 
       // Trouver la prochaine phase non complétée
       const allPhaseIds = PHASES.map(p => p.id);
       const nextUncompleted = allPhaseIds.find(id => id > 0 && !updatedPhases.includes(id));
       newCurrentPhase = nextUncompleted !== undefined ? nextUncompleted : 11;
-
-      // TOUJOURS régénérer le résumé (même si la phase était déjà complétée)
-      // Car l'utilisateur a pu mettre à jour/corriger des infos
-      generatePhaseSummary(sb, projectId, completedId, allMessages)
-        .catch(err => console.error('[Phase Summary] Background error:', err));
     }
 
     // Détecter aussi quand l'IA indique être sur une phase [Phase X — ...]
