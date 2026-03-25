@@ -88,6 +88,15 @@ export default function ClientPage() {
               .eq('project_id', proj.id)
               .order('created_at', { ascending: true });
             setMessages(updatedMsgs || []);
+
+            // Sync phase state from server
+            if (data.current_phase !== undefined || data.phases_completed) {
+              setProject(prev => ({
+                ...prev,
+                ...(data.current_phase !== undefined && { current_phase: data.current_phase }),
+                ...(data.phases_completed && { phases_completed: data.phases_completed }),
+              }));
+            }
           }
         } catch (e) {
           setError('Erreur de connexion');
