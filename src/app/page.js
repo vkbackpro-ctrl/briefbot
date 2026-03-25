@@ -361,33 +361,57 @@ export default function Dashboard() {
       const totalParts = 10;
 
       for (let part = 0; part < totalParts; part++) {
-        setExportProgress(`Génération ${part + 1}/${totalParts}...`);
+        const MAX_RETRIES = 3;
+        let lastErr = null;
 
-        const res = await fetch('/api/export', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ projectId: selectedProject.id, password: storedPw, format, part }),
-        });
+        for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+          setExportProgress(
+            attempt === 0
+              ? `Génération ${part + 1}/${totalParts}...`
+              : `Génération ${part + 1}/${totalParts} (tentative ${attempt + 1}/${MAX_RETRIES})...`
+          );
 
-        if (!res.ok) {
-          let errMsg = `Erreur ${res.status}`;
           try {
-            const errData = await res.json();
-            errMsg = errData.error || errMsg;
-          } catch {
-            if (res.status === 504) errMsg = `Partie ${part + 1} a pris trop de temps. Réessayez.`;
-            else errMsg = `Erreur serveur (${res.status}). Réessayez.`;
+            const res = await fetch('/api/export', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ projectId: selectedProject.id, password: storedPw, format, part }),
+            });
+
+            if (res.status === 504 || res.status === 503) {
+              lastErr = `Partie ${part + 1} a pris trop de temps.`;
+              if (attempt < MAX_RETRIES - 1) {
+                await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
+                continue;
+              }
+              throw new Error(`${lastErr} Échec après ${MAX_RETRIES} tentatives.`);
+            }
+
+            if (!res.ok) {
+              let errMsg = `Erreur ${res.status}`;
+              try {
+                const errData = await res.json();
+                errMsg = errData.error || errMsg;
+              } catch {
+                errMsg = `Erreur serveur (${res.status}). Réessayez.`;
+              }
+              throw new Error(errMsg);
+            }
+
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+            htmlParts.push(data.html);
+
+            // Update cost display
+            if (data.cost_usd != null) {
+              setSelectedProject(prev => ({ ...prev, cost_micro_usd: Math.round(data.cost_usd * 1000000) }));
+            }
+            break; // Success — move to next part
+          } catch (e) {
+            if (attempt >= MAX_RETRIES - 1) throw e;
+            lastErr = e.message;
+            await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
           }
-          throw new Error(errMsg);
-        }
-
-        const data = await res.json();
-        if (data.error) throw new Error(data.error);
-        htmlParts.push(data.html);
-
-        // Update cost display
-        if (data.cost_usd != null) {
-          setSelectedProject(prev => ({ ...prev, cost_micro_usd: Math.round(data.cost_usd * 1000000) }));
         }
       }
 
