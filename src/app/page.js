@@ -313,6 +313,7 @@ export default function Dashboard() {
   const [exportProgress, setExportProgress] = useState('');
   const [exportHistory, setExportHistory] = useState([]);
   const [showExportHistory, setShowExportHistory] = useState(false);
+  const [showContext, setShowContext] = useState(false);
 
   const loadExportHistory = async (projId) => {
     try {
@@ -579,6 +580,24 @@ export default function Dashboard() {
                 {copied === selectedProject.share_token ? '✅ Copié !' : '🔗 Copier le lien client'}
               </button>
             </div>
+
+            {/* Brief initial */}
+            {selectedProject.context && (
+              <div className="px-4 py-3 border-b border-slate-100">
+                <button
+                  onClick={() => setShowContext(!showContext)}
+                  className="text-[10px] font-bold text-slate-400 uppercase tracking-wider hover:text-slate-600 flex items-center gap-1 w-full"
+                >
+                  <span>{showContext ? '▼' : '▶'}</span>
+                  <span>Brief initial</span>
+                </button>
+                {showContext && (
+                  <div className="mt-2 max-h-60 overflow-y-auto bg-slate-50 rounded-lg p-3 border border-slate-200">
+                    <div className="text-xs text-slate-600 whitespace-pre-wrap leading-relaxed">{selectedProject.context}</div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Cost counter */}
             <div className="px-4 py-3 border-b border-slate-100">

@@ -12,7 +12,7 @@ export async function GET(request) {
   const sb = getServiceSupabase();
   const { data, error } = await sb
     .from('projects')
-    .select('id, name, client_name, url, current_phase, phases_completed, share_token, tokens_used, tokens_limit, cost_micro_usd, budget_micro_usd, created_at, updated_at')
+    .select('id, name, client_name, url, context, current_phase, phases_completed, share_token, tokens_used, tokens_limit, cost_micro_usd, budget_micro_usd, created_at, updated_at')
     .order('updated_at', { ascending: false });
 
   if (error) {
